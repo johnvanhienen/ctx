@@ -32,6 +32,7 @@ func newConfig() *config {
 
 func main() {
 	var environment string = "maz005-p"
+	var keepassGroup string = "Azure"
 	// envvars := [5]string{"TF_VAR_tenant_id", "TF_VAR_client_id", "TF_VAR_client_secret", "TF_VAR_subscription_id", "ARM_ACCESS_KEY"}
 
 	// for _, env := range envvars {
@@ -52,14 +53,17 @@ func main() {
 
 	db.UnlockProtectedEntries()
 
-	groups := db.Content.Root.Groups[0].Groups[0].Entries
+	groups := db.Content.Root.Groups[0].Groups
 
 	for _, group := range groups {
-		// fmt.Println(group.GetTitle())
-		if group.GetContent("Title") == environment {
-			fmt.Println(group.GetContent("Title"))
-			fmt.Println(group.GetContent("UserName"))
-			fmt.Println(group.GetContent("Password"))
+		if group.Name == keepassGroup {
+			for _, entry := range group.Entries {
+				if entry.GetContent("Title") == environment {
+					fmt.Println(entry.GetContent("Title"))
+					fmt.Println(entry.GetContent("UserName"))
+					fmt.Println(entry.GetContent("Password"))
+				}
+			}
 		}
 	}
 
