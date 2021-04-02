@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -31,40 +32,36 @@ func newConfig() *config {
 }
 
 func main() {
-	var environment string = "maz005-p"
-	var keepassGroup string = "Azure"
-	// envvars := [5]string{"TF_VAR_tenant_id", "TF_VAR_client_id", "TF_VAR_client_secret", "TF_VAR_subscription_id", "ARM_ACCESS_KEY"}
-
-	// for _, env := range envvars {
-	// 	if env == "" {
-	// 		fmt.Printf(os.Getenv(env))
-	// 	} else {
-	// 		fmt.Printf("%s not found.\n", env)
-	// 	}
-	// }
+	environmentPtr := flag.String("e", "", "Specify the customer environment (eg. maz005-p).")
+	keepassGroupPtr := flag.String("g", "Azure", "The Keepass group where the variables are stored.")
+	flag.Parse()
 
 	cfg := newConfig()
 
 	file, _ := os.Open(cfg.dbLocation)
-
 	db := gokeepasslib.NewDatabase()
 	db.Credentials = gokeepasslib.NewPasswordCredentials(cfg.secret)
 	_ = gokeepasslib.NewDecoder(file).Decode(db)
-
 	db.UnlockProtectedEntries()
 
-	groups := db.Content.Root.Groups[0].Groups
+	var groupFound bool = false
 
+	groups := db.Content.Root.Groups[0].Groups
 	for _, group := range groups {
-		if group.Name == keepassGroup {
+		if group.Name == *keepassGroupPtr {
+			groupFound = true
 			for _, entry := range group.Entries {
-				if entry.GetContent("Title") == environment {
-					fmt.Println(entry.GetContent("Title"))
-					fmt.Println(entry.GetContent("UserName"))
-					fmt.Println(entry.GetContent("Password"))
+				if entry.GetContent("Title") == *environmentPtr {
+					username := entry.GetContent("UserName")
+					password := entry.GetContent("Password")
+					fmt.Printf("export %s=%v\n", username, password)
 				}
 			}
 		}
+	}
+
+	if !groupFound {
+		fmt.Printf("Root group %s was not found.", *keepassGroupPtr)
 	}
 
 }
