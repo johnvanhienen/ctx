@@ -32,7 +32,7 @@ func newConfig() *config {
 }
 
 func main() {
-	environmentPtr := flag.String("e", "", "Specify the customer environment (eg. maz005-p).")
+	environmentPtr := flag.String("e", "", "Specify the customer environment, which is the title of the Keepass secret (eg. maz000-p).")
 	keepassGroupPtr := flag.String("g", "Azure", "The Keepass group where the variables are stored.")
 	flag.Parse()
 
