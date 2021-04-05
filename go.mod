@@ -1,4 +1,4 @@
-module main
+module github.com/johnvanhienen/ctx
 
 go 1.16
 
