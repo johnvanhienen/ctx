@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/tobischo/gokeepasslib"
 )
@@ -11,6 +12,27 @@ import (
 type config struct {
 	dbLocation string
 	secret     string
+}
+
+func main() {
+	environmentPtr := flag.String("e", "", "Specify the customer environment, which is the title of the Keepass secret (eg. maz000-p).")
+	targetGroupNamePtr := flag.String("g", "Azure", "The Keepass group where the variables are stored.")
+	flag.Parse()
+
+	cfg := newConfig()
+
+	file, _ := os.Open(cfg.dbLocation)
+	db := gokeepasslib.NewDatabase()
+	db.Credentials = gokeepasslib.NewPasswordCredentials(cfg.secret)
+	_ = gokeepasslib.NewDecoder(file).Decode(db)
+	db.UnlockProtectedEntries()
+
+	groups := db.Content.Root.Groups[0].Groups
+	group := findGroup(*targetGroupNamePtr, groups)
+
+	notes := getNotes(group, *environmentPtr)
+	printForExport(notes)
+
 }
 
 func newConfig() *config {
@@ -31,37 +53,31 @@ func newConfig() *config {
 	return &c
 }
 
-func main() {
-	environmentPtr := flag.String("e", "", "Specify the customer environment, which is the title of the Keepass secret (eg. maz000-p).")
-	keepassGroupPtr := flag.String("g", "Azure", "The Keepass group where the variables are stored.")
-	flag.Parse()
+func findGroup(targetGroupName string, groupPoolPtr []gokeepasslib.Group) (result gokeepasslib.Group) {
+	for _, group := range groupPoolPtr {
+		if group.Name == targetGroupName {
+			result := group
+			return result
+		}
+	}
+	fmt.Printf("Root group %s was not found.", targetGroupName)
+	return result
+}
 
-	cfg := newConfig()
-
-	file, _ := os.Open(cfg.dbLocation)
-	db := gokeepasslib.NewDatabase()
-	db.Credentials = gokeepasslib.NewPasswordCredentials(cfg.secret)
-	_ = gokeepasslib.NewDecoder(file).Decode(db)
-	db.UnlockProtectedEntries()
-
-	var groupFound bool = false
-
-	groups := db.Content.Root.Groups[0].Groups
-	for _, group := range groups {
-		if group.Name == *keepassGroupPtr {
-			groupFound = true
-			for _, entry := range group.Entries {
-				if entry.GetContent("Title") == *environmentPtr {
-					username := entry.GetContent("UserName")
-					password := entry.GetContent("Password")
-					fmt.Printf("export %s=%v\n", username, password)
-				}
+func getNotes(group gokeepasslib.Group, environment string) (result []string) {
+	for _, entry := range group.Entries {
+		if entry.GetContent("Title") == environment {
+			notes := entry.GetContent("Notes")
+			for _, line := range strings.Split(strings.TrimSuffix(notes, "\n"), "\n") {
+				result = append(result, line)
 			}
 		}
 	}
+	return result
+}
 
-	if !groupFound {
-		fmt.Printf("Root group %s was not found.", *keepassGroupPtr)
+func printForExport(lines []string) {
+	for _, line := range lines {
+		fmt.Printf(" export %v\n", line)
 	}
-
 }
