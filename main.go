@@ -4,9 +4,16 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/tobischo/gokeepasslib"
+)
+
+var (
+	version    = "dev-build"
+	goVersion  = runtime.Version()
+	versionStr = fmt.Sprintf("CTX version %v, %v", version, goVersion)
 )
 
 type config struct {
@@ -17,7 +24,14 @@ type config struct {
 func main() {
 	environmentPtr := flag.String("e", "", "Specify the customer environment, which is the title of the Keepass secret (eg. maz000-p).")
 	targetGroupNamePtr := flag.String("g", "Azure", "The Keepass group where the variables are stored.")
+	versionFlag := flag.Bool("v", false, "Displays the version number of CTX and Go.")
+
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(versionStr)
+		os.Exit(0)
+	}
 
 	cfg := newConfig()
 
