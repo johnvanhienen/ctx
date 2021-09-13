@@ -21,34 +21,6 @@ type config struct {
 	secret     string
 }
 
-func main() {
-	environmentPtr := flag.String("e", "", "Specify the customer environment, which is the title of the Keepass secret (eg. maz000-p).")
-	targetGroupNamePtr := flag.String("g", "Azure", "The Keepass group where the variables are stored.")
-	versionFlag := flag.Bool("v", false, "Displays the version number of CTX and Go.")
-
-	flag.Parse()
-
-	if *versionFlag {
-		fmt.Println(versionStr)
-		os.Exit(0)
-	}
-
-	cfg := newConfig()
-
-	file, _ := os.Open(cfg.dbLocation)
-	db := gokeepasslib.NewDatabase()
-	db.Credentials = gokeepasslib.NewPasswordCredentials(cfg.secret)
-	_ = gokeepasslib.NewDecoder(file).Decode(db)
-	db.UnlockProtectedEntries()
-
-	groups := db.Content.Root.Groups[0].Groups
-	group := findGroup(*targetGroupNamePtr, groups)
-
-	notes := getNotes(group, *environmentPtr)
-	printForExport(notes)
-
-}
-
 func newConfig() *config {
 	c := config{}
 	c.dbLocation = os.Getenv("HOME") + "/database.kdbx"
@@ -82,9 +54,7 @@ func getNotes(group gokeepasslib.Group, environment string) (result []string) {
 	for _, entry := range group.Entries {
 		if entry.GetContent("Title") == environment {
 			notes := entry.GetContent("Notes")
-			for _, line := range strings.Split(strings.TrimSuffix(notes, "\n"), "\n") {
-				result = append(result, line)
-			}
+			result = strings.Split(notes, "\n")
 		}
 	}
 	return result
@@ -94,4 +64,32 @@ func printForExport(lines []string) {
 	for _, line := range lines {
 		fmt.Printf(" export %v\n", line)
 	}
+}
+
+func main() {
+	environmentFlag := flag.String("e", "", "Specify the customer environment, which is the title of the Keepass secret (eg. maz000-p).")
+	targetGroupNameFlag := flag.String("g", "Azure", "The Keepass group where the variables are stored.")
+	versionFlag := flag.Bool("v", false, "Displays the version number of CTX and Go.")
+
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(versionStr)
+		os.Exit(0)
+	}
+
+	cfg := newConfig()
+
+	file, _ := os.Open(cfg.dbLocation)
+	db := gokeepasslib.NewDatabase()
+	db.Credentials = gokeepasslib.NewPasswordCredentials(cfg.secret)
+	_ = gokeepasslib.NewDecoder(file).Decode(db)
+	db.UnlockProtectedEntries()
+
+	groups := db.Content.Root.Groups[0].Groups
+	group := findGroup(*targetGroupNameFlag, groups)
+
+	notes := getNotes(group, *environmentFlag)
+	printForExport(notes)
+
 }
