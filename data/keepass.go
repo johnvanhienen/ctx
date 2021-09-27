@@ -93,10 +93,6 @@ func (s *Secrets) GetSecrets() []string {
 	allGroups := db.Content.Root.Groups[0].Groups
 	group := findGroup(s.GroupName, allGroups)
 	secrets := getNotes(group, s.Environment)
-	// if secrets != nil {
-	// 	fmt.Println()
-	// }
-	// fmt.Println(s.GroupName)
-	return secrets
 
+	return secrets
 }
