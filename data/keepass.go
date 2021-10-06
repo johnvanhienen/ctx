@@ -1,6 +1,7 @@
 package data
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -27,10 +28,11 @@ func NewKeepass(l *log.Logger, c *keepassConfig) *Secrets {
 
 func NewKeepassConfig() *keepassConfig {
 	c := keepassConfig{}
-	c.location = os.Getenv("HOME") + "/database.kdbx"
 
 	if os.Getenv("CTX_VAR_db_location") != "" {
 		c.location = os.Getenv("CTX_VAR_db_location")
+	} else {
+		c.location = os.Getenv("HOME") + "/database.kdbx"
 	}
 
 	if os.Getenv("CTX_VAR_secret") == "" {
@@ -43,15 +45,18 @@ func NewKeepassConfig() *keepassConfig {
 	return &c
 }
 
-func findGroup(targetGroupName string, groupPoolPtr []gokeepasslib.Group) (result gokeepasslib.Group) {
+func findGroup(targetGroupName string, groupPoolPtr []gokeepasslib.Group) (result gokeepasslib.Group, err error) {
+	if targetGroupName == "" {
+		return result, errors.New("root group name missing")
+	}
+
 	for _, group := range groupPoolPtr {
 		if group.Name == targetGroupName {
 			result := group
-			return result
+			return result, nil
 		}
 	}
-	fmt.Printf("Root group %s was not found.", targetGroupName)
-	return result
+	return result, fmt.Errorf("root group %s was not found", targetGroupName)
 }
 
 func getNotes(group gokeepasslib.Group, environment string) (result []string) {
@@ -65,34 +70,38 @@ func getNotes(group gokeepasslib.Group, environment string) (result []string) {
 	return result
 }
 
-func initDatabase(c *keepassConfig) (*gokeepasslib.Database, error) {
+func initDatabase(c *keepassConfig) (db *gokeepasslib.Database, err error) {
 	databaseFile, err := os.Open(c.location)
 	if err != nil {
-		fmt.Println("Can't find the database: ", err)
-	}
-
-	db := gokeepasslib.NewDatabase()
-	db.Credentials = gokeepasslib.NewPasswordCredentials(c.secret)
-	err = gokeepasslib.NewDecoder(databaseFile).Decode(db)
-
-	if err != nil {
-		fmt.Println("Can't open the database: ", err)
 		return nil, err
 	}
 
-	db.UnlockProtectedEntries()
+	db = gokeepasslib.NewDatabase()
+	db.Credentials = gokeepasslib.NewPasswordCredentials(c.secret)
+	err = gokeepasslib.NewDecoder(databaseFile).Decode(db)
+	if err != nil {
+		return nil, err
+	}
 
-	return db, nil
+	err = db.UnlockProtectedEntries()
+	if err != nil {
+		return nil, err
+	}
+
+	return db, err
 }
 
-func (s *Secrets) GetSecrets() []string {
+func (s *Secrets) GetSecrets() ([]string, error) {
 	db, err := initDatabase(s.dbConfig)
 	if err != nil {
-		s.l.Fatal(err)
+		return nil, err
 	}
 	allGroups := db.Content.Root.Groups[0].Groups
-	group := findGroup(s.GroupName, allGroups)
+	group, err := findGroup(s.GroupName, allGroups)
+	if err != nil {
+		return nil, err
+	}
 	secrets := getNotes(group, s.Environment)
 
-	return secrets
+	return secrets, nil
 }
