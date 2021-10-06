@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	version    = "dev-build"
+	version    = "v0.2.1"
 	goVersion  = runtime.Version()
 	versionStr = fmt.Sprintf("CTX version %v, %v", version, goVersion)
 )
