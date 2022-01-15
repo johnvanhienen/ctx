@@ -60,6 +60,8 @@ func handleKeepass(l *log.Logger, ctxCfg ctxConfig) ([]string, error) {
 }
 
 func printForExport(lines []string) {
+    // TODO: Implement the writer interface on the function, so stdout can
+    // be captured as a bytes.Buffer
 	for _, line := range lines {
 		fmt.Printf(" export %v\n", line)
 	}
